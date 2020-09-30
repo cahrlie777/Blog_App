@@ -1,7 +1,9 @@
-const bodyParser = require("body-parser"),
-      mongoose   = require("mongoose"),
-      express    = require("express"),
-      app        = express();
+  const expressSanitizer = require("express-sanitizer");
+        methodOverride   = require("method-override"),
+        bodyParser       = require("body-parser"),
+        mongoose         = require("mongoose"),
+        express          = require("express"),
+        app              = express();
 
 //Configuration
 mongoose.connect('mongodb://localhost/restful_blog_app', {
@@ -14,6 +16,8 @@ mongoose.connect('mongodb://localhost/restful_blog_app', {
 app.set("view engine","ejs");
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({extended:true}));
+app.use(methodOverride("_method"));
+app.use(expressSanitizer());
 
 const blogSchema = new mongoose.Schema({
   title: String,
@@ -55,6 +59,10 @@ app.get("/blogs/new", (req, res) =>{
 
   //Create Route
 app.post("/blogs", (req, res) =>{
+
+  //sanitize body text area
+  req.body.blog.body = req.sanitize(req.body.blog.body);
+
   Blog.create(req.body.blog,(err, blogs) =>{
     if(err){
       console.log("Error!");
@@ -75,6 +83,43 @@ app.get("/blogs/:id",(req, res)=>{
   });
 });
 
+  //Edit Route
+app.get("/blogs/:id/edit",(req, res)=>{
+  Blog.findById(req.params.id,(err, foundBlog)=>{
+    if(err){
+      res.redirect("/blogs");
+    }else{
+      res.render("edit", {blog: foundBlog})
+    }
+  });
+});
+
+  //Uptade Route
+app.put("/blogs/:id",(req, res)=>{
+
+  //sanitize body text area
+  req.body.blog.body = req.sanitize(req.body.blog.body);
+
+  Blog.findByIdAndUpdate(req.params.id, req.body.blog, (err, UptadeBlog)=>{
+    if(err){
+        res.redirect("/blogs");
+    }else{
+        res.redirect("/blogs/"+ req.params.id);
+    }
+  });
+});
+
+//Delete Rout
+app.delete("/blogs/:id",(req, res)=>{
+  Blog.findByIdAndRemove(req.params.id,(err)=>{
+    if(err){
+      res.redirect("/blogs");
+      alert("An error has ocurred");
+    }else{
+      res.redirect("/blogs");
+    }
+  })
+});
 
 //Start server
 app.listen(3000, ()=>{
